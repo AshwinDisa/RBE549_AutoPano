@@ -21,6 +21,30 @@ import os
 def save_image(filename, image):
     cv2.imwrite(filename, image)
 
+def get_feature_vector(image, best_corners, iter):
+
+    patch_size = 41
+    half_patch_size = patch_size // 2
+    padded_image = np.pad(image, ((patch_size, patch_size), (patch_size, patch_size), (0, 0)), 'constant')
+    feature_vectors = []
+    
+    for i in range(len(best_corners)):
+
+        x, y = int(best_corners[i,0] - half_patch_size), int(best_corners[i,1] - half_patch_size)
+
+        if x < 0 or y < 0:
+            continue
+            
+        gray_image = cv2.cvtColor(padded_image, cv2.COLOR_BGR2GRAY)    
+        patch = gray_image[x:x + patch_size, y:y + patch_size]
+        blurred_patch = cv2.GaussianBlur(patch, (7, 7), 0)     
+        sub_sampled_patch = cv2.resize(blurred_patch, (8, 8))
+        feature_vector = sub_sampled_patch.reshape((64, 1))
+        feature_vector = (feature_vector - np.mean(feature_vector)) / np.std(feature_vector)
+        feature_vectors.append(feature_vector)
+
+    return feature_vector
+
 def get_best_corners(image_anms, corners, corner_coords, iter, best = 200):
 
     Nstrong = len(corner_coords)
@@ -54,12 +78,12 @@ def get_best_corners(image_anms, corners, corner_coords, iter, best = 200):
         cv2.circle(image_anms, (int(n_best[i][1]),int(n_best[i][0])), 3, [0, 255, 0], -1)
     cv2.imshow('Image with N best corners', image_anms)
 
-    save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/Phase1/Code/ANMS/anms' + str(iter) + '.jpg', image_anms)
+    save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/HW1-AutoPano/Phase1/Code/ANMS/anms' + str(iter) + '.jpg', image_anms)
     if cv2.waitKey(0) & 0xff == 27: 
          cv2.destroyAllWindows() 
     cv2.waitKey(0)
 
-    return None
+    return n_best
 
 def get_corners(image_corner, iter, threshold = 0.01):
 
@@ -98,17 +122,17 @@ def get_corners(image_corner, iter, threshold = 0.01):
         x, y = corner[0], corner[1]
         x, y = np.intp(x), np.intp(y)
         corner_coords.append([x, y])
-        cv2.circle(image_corner, (x, y), 3, 255, -1)
+        # cv2.circle(image_corner, (x, y), 3, 255, -1)
 
 
     # Display the image with corners
-    cv2.imshow('Image with Borders', image_corner)
-    save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/Phase1/Code/corners/corner' + str(iter) + '.jpg', image_corner)        
+    # cv2.imshow('Image with Borders', image_corner)
+    # save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/HW1-AutoPano/Phase1/Code/corners/corner' + str(iter) + '.jpg', image_corner)        
 
     # De-allocate any associated memory usage  
-    if cv2.waitKey(0) & 0xff == 27: 
-        cv2.destroyAllWindows() 
-    cv2.waitKey(0)
+    # if cv2.waitKey(0) & 0xff == 27: 
+    #     cv2.destroyAllWindows() 
+    # cv2.waitKey(0)
 
     return corner_coords, dst
 
@@ -124,7 +148,7 @@ def main():
     Read a set of images for Panorama stitching
     """
     
-    imagepath = "/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/Phase1/Data/Train/Set1"
+    imagepath = "/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/HW1-AutoPano/Phase1/Data/Train/Set1"
     images = []
     
     for filename in os.listdir(imagepath):
@@ -140,36 +164,34 @@ def main():
         
         corner_coords, dst  = get_corners(image, iter)
 
-        best_corners = get_best_corners(image, dst, corner_coords, iter, best = 200) 
+        """
+        Perform ANMS: Adaptive Non-Maximal Suppression
+        Save ANMS output as anms.png
+        """
 
-
-    """
-    Perform ANMS: Adaptive Non-Maximal Suppression
-    Save ANMS output as anms.png
-    """
-
+        best_corners = get_best_corners(image, dst, corner_coords, iter, best = 200)
            
-        
-        
+        """
+        Feature Descriptors
+        Save Feature Descriptor output as FD.png
+        """
 
-    """
-    Feature Descriptors
-    Save Feature Descriptor output as FD.png
-    """
+        feature_vectors = get_feature_vector(image, best_corners, iter)
+        print(feature_vectors)
 
-    """
-    Feature Matching
-    Save Feature Matching output as matching.png
-    """
+        """
+        Feature Matching
+        Save Feature Matching output as matching.png
+        """
 
-    """
-    Refine: RANSAC, Estimate Homography
-    """
+        """
+        Refine: RANSAC, Estimate Homography
+        """
 
-    """
-    Image Warping + Blending
-    Save Panorama output as mypano.png
-    """
+        """
+        Image Warping + Blending
+        Save Panorama output as mypano.png
+        """
 
 
 if __name__ == "__main__":
