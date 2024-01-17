@@ -43,7 +43,7 @@ def get_feature_vector(image, best_corners, iter):
         feature_vector = (feature_vector - np.mean(feature_vector)) / np.std(feature_vector)
         feature_vectors.append(feature_vector)
 
-    return feature_vector
+    return feature_vectors
 
 def get_best_corners(image_anms, corners, corner_coords, iter, best = 200):
 
@@ -176,8 +176,8 @@ def main():
         Save Feature Descriptor output as FD.png
         """
 
-        feature_vectors = get_feature_vector(image, best_corners, iter)
-        print(feature_vectors)
+        feature_vector = get_feature_vector(image, best_corners, iter)
+        
 
         """
         Feature Matching
