@@ -24,72 +24,15 @@ import random
 def save_image(filename, image):
     cv2.imwrite(filename, image)
 
-def keypoint(points):
-	kp1 = []
-	for i in range(len(points)):
-		kp1.append(cv2.KeyPoint(int(points[i][0]), int(points[i][1]), 3))
-	return kp1
+def plotter(image1, keypoints1, image2, keypoints2, dmatches):
 
-def matches(points):
-	m = []
-	for i in range(len(points)):
-		m.append(cv2.DMatch(int(points[i][0]), int(points[i][1]), 2))
-	return m
+    matched_image = cv2.drawMatches(image1, keypoints1, image2, keypoints2, dmatches, None, flags=2)
+
+    plt.imshow(cv2.cvtColor(matched_image, cv2.COLOR_BGR2RGB))
+    plt.show()
+
 
 def get_ransac(dmatches, keypoints1, keypoints2):
-
-    # count = []
-    # inliers = []
-
-    # for i in range(1):
-    
-    #     random_pts = random.sample(range(len(dmatches)), 4)
-
-    #     keypoints1_for_ransac = np.array([keypoints1[keypoint.queryIdx].pt for keypoint in dmatches])
-    #     keypoints2_for_ransac = np.array([keypoints2[keypoint.trainIdx].pt for keypoint in dmatches])
-
-    #     points1_for_ransac = keypoints1_for_ransac[random_pts]
-    #     points2_for_ransac = keypoints2_for_ransac[random_pts]
-
-    #     homography, mask = cv2.findHomography(keypoints1_for_ransac, keypoints2_for_ransac, cv2.RANSAC, 5.0)                
-
-    #     points = []
-    #     final_keypoint1 = []
-    #     final_keypoint2 = []
-    #     count_inliers = 0
-
-    #     for i in range(len(keypoints1_for_ransac)):
-
-    #         keypoint1_array = np.array([keypoints1_for_ransac[i][0], keypoints1_for_ransac[i][1], 1])
-    #         keypoint2_array = np.array([keypoints2_for_ransac[i][0], keypoints2_for_ransac[i][1], 1])
-
-    #         keypoint1_array_for_homo = [keypoints1_for_ransac[i][0], keypoints1_for_ransac[i][1]]
-    #         keypoint2_array_for_homo = [keypoints2_for_ransac[i][0], keypoints2_for_ransac[i][1]]
-
-    #         # print(np.dot(homography, keypoint1_array.T).shape, keypoint2_array.shape)
-    #         ssd = np.linalg.norm(np.array(keypoint2_array.T) - np.dot(homography, keypoint1_array.T))
-    #         # print(ssd)
-
-    #         if ssd < 30:
-                
-    #             final_keypoint1.append(keypoint1_array_for_homo)
-    #             final_keypoint2.append(keypoint2_array_for_homo)
-    #             points.append((final_keypoint1, final_keypoint2))
-    #             count_inliers += 1
-
-    #     count.append(-count_inliers)
-    #     inliers.append((homography, points))
-
-    # max_count_idx = np.argsort(count)
-    # max_count_idx = max_count_idx[0]
-    # final_matched_pairs = inliers[max_count_idx][1]
-    # # print(final_matched_pairs)
-    # print("Matched pairs", len(final_matched_pairs))
-    # pts_1 = [x[0] for x in final_matched_pairs]
-    # pts_2 = [x[1] for x in final_matched_pairs]
-    # h_final_matrix, status = cv2.findHomography(np.float32(pts_1),np.float32(pts_2))
-    # print(h_final_matrix)
-    # return h_final_matrix, final_matched_pairs
 
     count = []
     inliers = []
@@ -318,7 +261,7 @@ def main():
         
         corners = np.array(corners).reshape(-1, 2)
         best_corners.append(corners)
-        print(corners.shape)
+        # print(corners.shape)
         
         # print(corners)
         
@@ -328,50 +271,48 @@ def main():
         """
         feature_vector = get_feature_vector(gray, corners, iter)
         feature_vectors.append(feature_vector)
-        print(np.array(feature_vector).shape)
-        
+        # print(np.array(feature_vector).shape)
 
-    """
-    Feature Matching
-    Save Feature Matching output as matching.png
-    """
     
-    matches = []
     print("")
     for i in range(len(images)):
+
         for j in range(i+1, len(images)):
+
+
+            """
+            Feature Matching
+            Save Feature Matching output as matching.png
+            """
+            matches = []
+            
             matched_features = match_features(feature_vectors[i], feature_vectors[j], best_corners[i], best_corners[j], ratio = 0.8)
+            
             if matched_features:
+
                 keypoints1 = convert_to_keypoints([elem[0] for elem in matched_features])
                 keypoints2 = convert_to_keypoints([elem[1] for elem in matched_features])
                 dmatches = convert_to_dmatches(matched_features)
 
-                matched_image = cv2.drawMatches(images[i], keypoints1, images[j], keypoints2, dmatches, None, flags=2)
+                plotter(images[i], keypoints1, images[j], keypoints2, dmatches)                
 
-                plt.imshow(cv2.cvtColor(matched_image, cv2.COLOR_BGR2RGB))
-                plt.show()
-
-                h_final_matrix, final_matched_pairs = get_ransac(dmatches, keypoints1, keypoints2)
-
-                key_points_1 = [x[0] for x in final_matched_pairs]
-                keypoints1 = keypoint(key_points_1)
-                key_points_2 = [x[1] for x in final_matched_pairs]
-                keypoints2 = keypoint(key_points_2)
-                matched_pairs_idx = [(i,i) for i,j in enumerate(final_matched_pairs)]
-                dmatches = convert_to_dmatches(matched_pairs_idx)
-
-                matched_image = cv2.drawMatches(images[i], keypoints1, images[j], keypoints2, dmatches, None, flags =2)
-
-                plt.imshow(cv2.cvtColor(matched_image, cv2.COLOR_BGR2RGB))
-                plt.show()
-            
+                
                 """
                 Refine: RANSAC, Estimate Homography
                 """
 
+                h_final_matrix, final_matched_pairs = get_ransac(dmatches, keypoints1, keypoints2)
 
+                keypoints1 = convert_to_keypoints(final_matched_pairs[0])
+                keypoints2 = convert_to_keypoints(final_matched_pairs[1])
 
+                for k in range(len(keypoints1)):
 
+                    matches.append([keypoints1[k], keypoints2[k]])
+
+                dmatches = convert_to_dmatches(matches)
+
+                plotter(images[i], keypoints1, images[j], keypoints2, dmatches)
 
 
     """
