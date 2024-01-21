@@ -24,6 +24,26 @@ import random
 def save_image(filename, image):
     cv2.imwrite(filename, image)
 
+def get_warped_image(image1, image2, h_mat):
+    
+    h1, w1 = image1.shape[:2]
+    h2, w2 = image2.shape[:2]
+
+    pts1 = np.float32([[0, 0], [0, h1], [w1, h1], [w1, 0]])
+    pts2 = np.float32([[0, 0], [0, h2], [w2, h2], [w2, 0]])
+    pts2_ = cv2.perspectiveTransform(pts2.reshape(-1, 1, 2), h_mat).reshape(-1, 2)
+    pts = np.concatenate((pts1, pts2_), axis=0)
+    [xmin, ymin] = np.int32(pts.min(axis=0))
+    [xmax, ymax] = np.int32(pts.max(axis=0))
+    t = [-xmin, -ymin]
+    Ht = np.array([[1, 0, t[0]], [0, 1, t[1]], [0, 0, 1]])
+
+    result = cv2.warpPerspective(image1, Ht.dot(h_mat), (xmax - xmin, ymax - ymin), flags=cv2.INTER_LINEAR)
+
+    result[t[1]:h1 + t[1], t[0]:w1 + t[0]] = image2
+
+    return result
+
 def plotter(image1, keypoints1, image2, keypoints2, dmatches):
 
     matched_image = cv2.drawMatches(image1, keypoints1, image2, keypoints2, dmatches, None, flags=2)
@@ -205,7 +225,7 @@ def match_features(feature_vectors1, feature_vectors2, corner1, corner2, ratio =
         # print(f"ratio : {min_dist[0] / min_dist[1]}")
         if min_dist[0] / min_dist[1] < ratio:
             matches.append([corner1[j,:],corner2[min_index[0],:]])
-    print(f"Number of matches: {len(matches)}")
+    # print(f"Number of matches: {len(matches)}")
     return matches
 
 def convert_to_keypoints(corners):
@@ -232,15 +252,15 @@ def main():
     images = []
     
     # for filename in os.listdir(imagepath):
-    for i in range(3):
+    for i in range(len(os.listdir(imagepath))):
         img = cv2.imread(os.path.join(imagepath, f"{i+1}.jpg"))
         images.append(img)
-        
 
     """
     Corner Detection
     Save Corner detection output as corners.png
     """
+    
     feature_vectors = []
     best_corners = []
 
@@ -275,50 +295,51 @@ def main():
 
     
     print("")
-    for i in range(len(images)):
+    for i in range(len(images)-1):
 
-        for j in range(i+1, len(images)):
+        """
+        Feature Matching
+        Save Feature Matching output as matching.png
+        """
+        matches = []
+        
+        matched_features = match_features(feature_vectors[i], feature_vectors[i+1], best_corners[i], best_corners[i+1], ratio = 0.8)
+        
+        if matched_features:
 
+            keypoints1 = convert_to_keypoints([elem[0] for elem in matched_features])
+            keypoints2 = convert_to_keypoints([elem[1] for elem in matched_features])
+            dmatches = convert_to_dmatches(matched_features)
+
+            # plotter(images[i], keypoints1, images[j], keypoints2, dmatches)                
+
+            
+            """
+            Refine: RANSAC, Estimate Homography
+            """
+
+            h_final_matrix, final_matched_pairs = get_ransac(dmatches, keypoints1, keypoints2)
+
+            keypoints1 = convert_to_keypoints(final_matched_pairs[0])
+            keypoints2 = convert_to_keypoints(final_matched_pairs[1])
+            for k in range(len(keypoints1)):
+                matches.append([keypoints1[k], keypoints2[k]])
+
+            dmatches = convert_to_dmatches(matches)
+
+            # plotter(images[i], keypoints1, images[j], keypoints2, dmatches)
 
             """
-            Feature Matching
-            Save Feature Matching output as matching.png
+            Image Warping + Blending
+            Save Panorama output as mypano.png
             """
-            matches = []
-            
-            matched_features = match_features(feature_vectors[i], feature_vectors[j], best_corners[i], best_corners[j], ratio = 0.8)
-            
-            if matched_features:
 
-                keypoints1 = convert_to_keypoints([elem[0] for elem in matched_features])
-                keypoints2 = convert_to_keypoints([elem[1] for elem in matched_features])
-                dmatches = convert_to_dmatches(matched_features)
+            warped_image = get_warped_image(images[i], images[i+1], h_final_matrix)
 
-                plotter(images[i], keypoints1, images[j], keypoints2, dmatches)                
+            plt.imshow(cv2.cvtColor(warped_image, cv2.COLOR_BGR2RGB))
+            plt.show()
 
-                
-                """
-                Refine: RANSAC, Estimate Homography
-                """
-
-                h_final_matrix, final_matched_pairs = get_ransac(dmatches, keypoints1, keypoints2)
-
-                keypoints1 = convert_to_keypoints(final_matched_pairs[0])
-                keypoints2 = convert_to_keypoints(final_matched_pairs[1])
-
-                for k in range(len(keypoints1)):
-
-                    matches.append([keypoints1[k], keypoints2[k]])
-
-                dmatches = convert_to_dmatches(matches)
-
-                plotter(images[i], keypoints1, images[j], keypoints2, dmatches)
-
-
-    """
-    Image Warping + Blending
-    Save Panorama output as mypano.png
-    """
+            save_image("Phase1/Data/Results/Set1/mypano" + str(i) + ".png", warped_image)
 
 
 if __name__ == "__main__":
