@@ -24,6 +24,22 @@ import random
 def save_image(filename, image):
     cv2.imwrite(filename, image)
 
+def crop_panorama(panorama):
+    gray = cv2.cvtColor(panorama, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    x, y, w, h = cv2.boundingRect(contours[0])
+    cropped_panorama = panorama[y:y+h, x:x+w]
+    return cropped_panorama
+
+def blend_images(image1, image2):
+
+    if image1.shape != image2.shape:
+        image2 = cv2.resize(image2, (image1.shape[1], image1.shape[0]))
+
+    blended_image = cv2.addWeighted(image1, 0.2, image2, 0.2, 0)
+    return blended_image
+
 def get_warped_image(image1, image2, h_mat):
     
     h1, w1 = image1.shape[:2]
@@ -40,7 +56,14 @@ def get_warped_image(image1, image2, h_mat):
 
     result = cv2.warpPerspective(image1, Ht.dot(h_mat), (xmax - xmin, ymax - ymin), flags=cv2.INTER_LINEAR)
 
-    result[t[1]:h1 + t[1], t[0]:w1 + t[0]] = image2
+    result_region = result[t[1]:h2 + t[1], t[0]:w2 + t[0]]
+    
+    if result_region.shape[0] != h2 or result_region.shape[1] != w2:
+        result_region = result_region[:h2, :w2]
+
+    result[t[1]:h2 + t[1], t[0]:w2 + t[0]] = image2
+
+    print("result shape: ", result.shape)
 
     return result
 
@@ -264,38 +287,30 @@ def main():
     feature_vectors = []
     best_corners = []
 
-    for iter, image in enumerate(images):
-        
-        # corner_coords, dst  = get_corners(image, iter)
+    stitched_panorama = images[0]
 
-        """
-        Perform ANMS: Adaptive Non-Maximal Suppression
-        Save ANMS output as anms.png
-        """
+    print("")
+    for i in range(len(images)-1):
 
-        # corners = get_best_corners(image, dst, corner_coords, iter, best = 200)
-        # print(corners)
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-       
+        gray_pano = cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(images[i+1], cv2.COLOR_BGR2GRAY)
+    
         corners = cv2.goodFeaturesToTrack(gray, 500, 0.001, 10, useHarrisDetector=False)
+        corners_pano = cv2.goodFeaturesToTrack(gray_pano, 500, 0.001, 10, useHarrisDetector=False)
         
         corners = np.array(corners).reshape(-1, 2)
+        corners_pano = np.array(corners_pano).reshape(-1, 2)
+        best_corners.append(corners_pano)
         best_corners.append(corners)
-        # print(corners.shape)
-        
-        # print(corners)
         
         """
         Feature Descriptors
         Save Feature Descriptor output as FD.png
         """
         feature_vector = get_feature_vector(gray, corners, iter)
+        feature_vector_pano = get_feature_vector(gray_pano, corners_pano, iter)
+        feature_vectors.append(feature_vector_pano)
         feature_vectors.append(feature_vector)
-        # print(np.array(feature_vector).shape)
-
-    
-    print("")
-    for i in range(len(images)-1):
 
         """
         Feature Matching
@@ -303,7 +318,7 @@ def main():
         """
         matches = []
         
-        matched_features = match_features(feature_vectors[i], feature_vectors[i+1], best_corners[i], best_corners[i+1], ratio = 0.8)
+        matched_features = match_features(feature_vectors[2*i], feature_vectors[2*i+1], best_corners[2*i], best_corners[2*i+1], ratio = 0.8)
         
         if matched_features:
 
@@ -311,8 +326,7 @@ def main():
             keypoints2 = convert_to_keypoints([elem[1] for elem in matched_features])
             dmatches = convert_to_dmatches(matched_features)
 
-            # plotter(images[i], keypoints1, images[j], keypoints2, dmatches)                
-
+            # plotter(stitched_panorama, keypoints1, images[i+1], keypoints2, dmatches)                
             
             """
             Refine: RANSAC, Estimate Homography
@@ -327,19 +341,25 @@ def main():
 
             dmatches = convert_to_dmatches(matches)
 
-            # plotter(images[i], keypoints1, images[j], keypoints2, dmatches)
+            # plotter(stitched_panorama, keypoints1, images[i+1], keypoints2, dmatches)
 
             """
             Image Warping + Blending
             Save Panorama output as mypano.png
             """
 
-            warped_image = get_warped_image(images[i], images[i+1], h_final_matrix)
+            stitched_panorama = get_warped_image(stitched_panorama, images[i+1], h_final_matrix)
 
-            plt.imshow(cv2.cvtColor(warped_image, cv2.COLOR_BGR2RGB))
+            # stitched_panorama = blend_images(stitched_panorama, warped_image)
+            stitched_panorama = crop_panorama(stitched_panorama)
+            
+            plt.imshow(cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2RGB))
             plt.show()
 
-            save_image("Phase1/Data/Results/Set1/mypano" + str(i) + ".png", warped_image)
+            save_image("Phase1/Data/Results/Set1/" + str(i+1) + ".jpg", stitched_panorama)
+
+        # best_corners = []
+        # feature_vectors = []
 
 
 if __name__ == "__main__":
