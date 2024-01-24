@@ -48,6 +48,21 @@ from termcolor import colored, cprint
 import math as m
 from tqdm import tqdm
 
+def LossFn(PredicatedCoordinatesBatch, CoordinatesBatch):
+    """
+    Inputs:
+    PredicatedCoordinatesBatch - Predicted Coordinates of size (MiniBatchSize, 4)
+    CoordinatesBatch - Actual Coordinates of size (MiniBatchSize, 4)
+    Outputs:
+    Loss - Smooth L1 Loss between the Predicted and Actual Coordinates
+    """
+    # L2 Loss / MSE loss
+    Loss = torch.nn.MSELoss(
+        PredicatedCoordinatesBatch, CoordinatesBatch, reduction="mean"
+    )
+    return Loss
+
+
 
 def GenerateBatch(BasePath, DirNamesTrain, TrainCoordinates, ImageSize, MiniBatchSize):
     """
@@ -139,7 +154,7 @@ def TrainOperation(
     ###############################################
     # Fill your optimizer of choice here!
     ###############################################
-    Optimizer = ...
+    Optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Tensorboard
     # Create a summary to monitor loss tensor
@@ -256,7 +271,7 @@ def main():
     Parser.add_argument(
         "--MiniBatchSize",
         type=int,
-        default=1,
+        default=64,
         help="Size of the MiniBatch to use, Default:1",
     )
     Parser.add_argument(
