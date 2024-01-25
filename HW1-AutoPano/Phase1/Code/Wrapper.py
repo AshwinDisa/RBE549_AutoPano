@@ -90,6 +90,10 @@ def get_ransac(dmatches, keypoints1, keypoints2):
         points1_for_ransac = keypoints1_for_ransac[random_pts]
         points2_for_ransac = keypoints2_for_ransac[random_pts]
 
+        if (np.all(points1_for_ransac == points1_for_ransac[0]) or np.all(points2_for_ransac == points2_for_ransac[0])):
+            print("points are same")
+            continue
+
         homography, mask = cv2.findHomography(points1_for_ransac, points2_for_ransac, cv2.RANSAC, 5.0)
 
         points = []
@@ -98,6 +102,7 @@ def get_ransac(dmatches, keypoints1, keypoints2):
         count_inliers = 0
 
         for i in range(len(keypoints1_for_ransac)):
+
             keypoint1_array = np.array([keypoints1_for_ransac[i][0], keypoints1_for_ransac[i][1], 1])
             keypoint2_array = np.array([keypoints2_for_ransac[i][0], keypoints2_for_ransac[i][1], 1])
 
@@ -125,24 +130,23 @@ def get_ransac(dmatches, keypoints1, keypoints2):
 
     return h_final_matrix, final_matched_pairs
 
-def get_feature_vector(image, best_corners, iter):
+def get_feature_vector(image, best_corners):
     patch_size = 41
     half_patch_size = patch_size // 2
     padded_image = cv2.copyMakeBorder(image, half_patch_size, half_patch_size, half_patch_size, half_patch_size, cv2.BORDER_CONSTANT)
     feature_vectors = []
-    
+   
     for x, y in best_corners:
-        
+
         x_padded = int(x + half_patch_size)
         y_padded = int(y + half_patch_size)
 
-        patch = padded_image[y_padded - patch_size//2:y_padded + patch_size//2 + 1,
-                      x_padded - patch_size//2:x_padded + patch_size//2 + 1]
-        
+        patch = padded_image[y_padded - half_patch_size:y_padded + half_patch_size, 
+                             x_padded - half_patch_size:x_padded + half_patch_size+1]
+
         blurred_patch = cv2.GaussianBlur(patch, (7, 7), 0)
         sub_sampled_patch = cv2.resize(blurred_patch, (8, 8))
         feature_vector = sub_sampled_patch.reshape((64, 1))
-        # print(patch.shape)
         
         feature_vector = (feature_vector - np.mean(feature_vector)) / np.std(feature_vector) + 0.0001
         feature_vectors.append(feature_vector)
@@ -150,7 +154,7 @@ def get_feature_vector(image, best_corners, iter):
     return feature_vectors
 
 
-def get_best_corners(image_anms, corners, corner_coords, iter, best = 200):
+def get_best_corners(image_anms, corners, corner_coords, best):
 
     Nstrong = len(corner_coords)
     inf = np.inf
@@ -165,6 +169,9 @@ def get_best_corners(image_anms, corners, corner_coords, iter, best = 200):
             y = corner_coords[i][1]
             other_x = corner_coords[j][0]
             other_y = corner_coords[j][1]
+            
+            if (x >= corners.shape[1] or y >= corners.shape[0] or other_x >= corners.shape[1] or other_y >= corners.shape[0]):
+                continue
 
             if corners[y, x] > corners[other_y, other_x]:
                 
@@ -172,33 +179,33 @@ def get_best_corners(image_anms, corners, corner_coords, iter, best = 200):
 
             if ED < r[i, 0]:
                 r[i, 0] = ED
-                r[i, 1] = x
-                r[i, 2] = y
+                r[i, 1] = y
+                r[i, 2] = x
+
+        # print(x, y)
             
     r = r[r[:, 0].argsort()]
     r = np.flip(r)
     n_best = r[:best]
+    n_best = n_best[:, 0:2]
 
-    for i in range(len(n_best)):
-        cv2.circle(image_anms, (int(n_best[i][1]),int(n_best[i][0])), 3, [0, 255, 0], -1)
-    cv2.imshow('Image with N best corners', image_anms)
+    # for i in range(len(n_best)):
+    #     cv2.circle(image_anms, (int(n_best[i][0]),int(n_best[i][1])), 3, [0, 255, 0], -1)
+    # cv2.imshow('Image with N best corners', image_anms)
 
-    save_image('Phase1/Code/ANMS/anms' + str(iter) + '.jpg', image_anms)
-    if cv2.waitKey(0) & 0xff == 27: 
-         cv2.destroyAllWindows() 
+    # # save_image('Phase1/Code/ANMS/anms' + str(iter) + '.jpg', image_anms)
+    # if cv2.waitKey(0) & 0xff == 27: 
+    #      cv2.destroyAllWindows() 
     # cv2.waitKey(0)
 
     return n_best
 
-def get_corners(image_corner, iter, threshold = 0.01):
-
-    # Convert image to grayscale
-    gray = cv2.cvtColor(image_corner, cv2.COLOR_BGR2GRAY)
+def get_corners(gray, threshold=0.01):
     
     # Apply cornerHarris algorithm
         
     dst = cv2.cornerHarris(gray, 2, 3, 0.04)
-    ret, dst_int = cv2.threshold(dst,threshold*dst.max(),255,0)
+    ret, dst_int = cv2.threshold(dst,threshold * np.max(dst),255,0)
     dst_int = np.uint8(dst_int)
     # find centroids
     ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst_int)
@@ -213,14 +220,12 @@ def get_corners(image_corner, iter, threshold = 0.01):
         x, y = corner[0], corner[1]
         x, y = np.intp(x), np.intp(y)
         corner_coords.append([x, y])
-        # cv2.circle(image_corner, (x, y), 3, 255, -1)
+        cv2.circle(gray, (x, y), 3, 255, -1)
 
 
-    # Display the image with corners
-    # cv2.imshow('Image with Borders', image_corner)
+    # cv2.imshow('Image with Borders', gray)
     # save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/HW1-AutoPano/Phase1/Code/corners/corner' + str(iter) + '.jpg', image_corner)        
-
-    # De-allocate any associated memory usage  
+    
     # if cv2.waitKey(0) & 0xff == 27: 
     #     cv2.destroyAllWindows() 
     # cv2.waitKey(0)
@@ -228,7 +233,7 @@ def get_corners(image_corner, iter, threshold = 0.01):
     return corner_coords, dst
 
 
-def match_features(feature_vectors1, feature_vectors2, corner1, corner2, ratio = 0.8):
+def match_features(feature_vectors1, feature_vectors2, corner1, corner2, ratio = 0.6):
     
     matches = []
     for j in range(len(feature_vectors1)):
@@ -295,8 +300,14 @@ def main():
         gray_pano = cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2GRAY)
         gray = cv2.cvtColor(images[i+1], cv2.COLOR_BGR2GRAY)
     
-        corners = cv2.goodFeaturesToTrack(gray, 500, 0.001, 10, useHarrisDetector=False)
-        corners_pano = cv2.goodFeaturesToTrack(gray_pano, 500, 0.001, 10, useHarrisDetector=False)
+        # corners = cv2.goodFeaturesToTrack(gray, 500, 0.001, 10, useHarrisDetector=False)
+        # corners_pano = cv2.goodFeaturesToTrack(gray_pano, 500, 0.001, 10, useHarrisDetector=False)
+
+        corner_coords, dst = get_corners(gray)
+        corner_coords_pano, dst_pano = get_corners(gray_pano)
+
+        corners = get_best_corners(images[i+1], dst, corner_coords, best=300)
+        corners_pano = get_best_corners(stitched_panorama, dst_pano, corner_coords_pano, best=300)
         
         corners = np.array(corners).reshape(-1, 2)
         corners_pano = np.array(corners_pano).reshape(-1, 2)
@@ -307,8 +318,9 @@ def main():
         Feature Descriptors
         Save Feature Descriptor output as FD.png
         """
-        feature_vector = get_feature_vector(gray, corners, iter)
-        feature_vector_pano = get_feature_vector(gray_pano, corners_pano, iter)
+        
+        feature_vector = get_feature_vector(gray, corners)
+        feature_vector_pano = get_feature_vector(gray_pano, corners_pano)
         feature_vectors.append(feature_vector_pano)
         feature_vectors.append(feature_vector)
 
@@ -341,7 +353,7 @@ def main():
 
             dmatches = convert_to_dmatches(matches)
 
-            # plotter(stitched_panorama, keypoints1, images[i+1], keypoints2, dmatches)
+            plotter(stitched_panorama, keypoints1, images[i+1], keypoints2, dmatches)
 
             """
             Image Warping + Blending
