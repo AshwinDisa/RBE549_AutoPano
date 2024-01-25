@@ -127,3 +127,66 @@ class Net(nn.Module):
         # Fill your network structure of choice here!
         #############################
         return out
+
+
+
+class SupModel(nn.Module):
+    def __init__(self, InputSize, OutputSize):
+        """
+        Inputs:
+        InputSize - Size of the Input
+        OutputSize - Size of the Output
+        """
+        super().__init__()
+        #############################
+        # Fill your network initialization of choice here!
+        #############################
+        self.conv1 = nn.Conv2d(2, 64, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        
+        self.conv5 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        
+        
+        self.conv7 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.conv8 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        
+        self.fc1 = nn.Linear(128*16*16, 1024)
+        self.fc2 = nn.Linear(1024, 8)
+        
+
+    def forward(self, x):
+        """
+        Input:
+        x is a MiniBatch of the image a
+        Outputs:
+        out - output of the network
+        """
+        #############################
+        # Fill your network structure of choice here!
+        #############################
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        
+        x = self.maxpool(x)
+        
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        
+        x = self.maxpool(x)
+        
+        x = F.relu(self.conv5(x))
+        x = F.relu(self.conv6(x))
+        
+        x = self.maxpool(x)
+        
+        x = F.relu(self.conv7(x))
+        x = F.relu(self.conv8(x))
+        
+        x = self.fc1(x.view(-1, 128*16*16))
+        out = self.fc2(x)
+        
+        return out

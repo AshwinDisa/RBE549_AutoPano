@@ -40,20 +40,22 @@ def SetupAll(BasePath, CheckPointPath):
     DirNamesTrain = SetupDirNames(BasePath)
 
     # Read and Setup Labels
-    LabelsPathTrain = './TxtFiles/LabelsTrain.txt'
-    TrainLabels = ReadLabels(LabelsPathTrain)
+    LabelsPathTrain = './Phase2/Data/G.txt'
+    TrainLabels = np.load(os.path.join(LabelsPathTrain, 'Labels.npy'), allow_pickle=True)
+    
+    # TrainLabels = ReadLabels(LabelsPathTrain)
 
     # If CheckPointPath doesn't exist make the path
     if not (os.path.isdir(CheckPointPath)):
         os.makedirs(CheckPointPath)
 
     # Save checkpoint every SaveCheckPoint iteration in every epoch, checkpoint saved automatically after every epoch
-    SaveCheckPoint = 100
+    SaveCheckPoint = 1000
     # Number of passes of Val data with MiniBatchSize
     NumTestRunsPerEpoch = 5
 
     # Image Input Shape
-    ImageSize = [32, 32, 3]
+    ImageSize = [128, 128, 2]
     NumTrainSamples = len(DirNamesTrain)
 
     # Number of classes
@@ -65,7 +67,7 @@ def SetupAll(BasePath, CheckPointPath):
         ImageSize,
         NumTrainSamples,
         TrainLabels,
-        NumClasses,
+        NumClasses
     )
 
 

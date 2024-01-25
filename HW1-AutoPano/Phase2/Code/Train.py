@@ -154,7 +154,7 @@ def TrainOperation(
     ###############################################
     # Fill your optimizer of choice here!
     ###############################################
-    Optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    Optimizer = torch.optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
 
     # Tensorboard
     # Create a summary to monitor loss tensor
@@ -242,8 +242,8 @@ def main():
     Parser = argparse.ArgumentParser()
     Parser.add_argument(
         "--BasePath",
-        default="/home/lening/workspace/rbe549/YourDirectoryID_p1/Phase2/Data",
-        help="Base path of images, Default:/home/lening/workspace/rbe549/YourDirectoryID_p1/Phase2/Data",
+        default="/home/lening/workspace/rbe549/YourDirectoryID_p1/Phase2/Data/GeneratedDataset/Train/",
+        help="Base path of images, Default:/home/lening/workspace/rbe549/YourDirectoryID_p1/Phase2/Data/GeneratedDataset/Train/",
     )
     Parser.add_argument(
         "--CheckPointPath",
