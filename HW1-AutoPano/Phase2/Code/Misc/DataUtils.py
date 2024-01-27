@@ -37,11 +37,17 @@ def SetupAll(BasePath, CheckPointPath):
     NumClasses - Number of classes
     """
     # Setup DirNames
-    DirNamesTrain = SetupDirNames(BasePath)
+    # DirNamesTrain = None
+    DirNamesTrain = SetupDirNames(os.path.join(BasePath, 'Train/train_names.txt'))
+    DirNamesVal = SetupDirNames(os.path.join(BasePath, 'Val/val_names.txt'))        
 
     # Read and Setup Labels
-    LabelsPathTrain = './Phase2/Data/G.txt'
+    LabelsPathTrain = './Phase2/Data/GeneratedDataset/Train/'
     TrainLabels = np.load(os.path.join(LabelsPathTrain, 'Labels.npy'), allow_pickle=True)
+    
+    # Read and Setup Labels
+    LabelsPathVal = './Phase2/Data/GeneratedDataset/Val/'
+    ValLabels = np.load(os.path.join(LabelsPathVal, 'Labels.npy'), allow_pickle=True)
     
     # TrainLabels = ReadLabels(LabelsPathTrain)
 
@@ -57,16 +63,20 @@ def SetupAll(BasePath, CheckPointPath):
     # Image Input Shape
     ImageSize = [128, 128, 2]
     NumTrainSamples = len(DirNamesTrain)
+    NumValSamples = len(DirNamesVal)
 
     # Number of classes
     NumClasses = 10
 
     return (
         DirNamesTrain,
+        DirNamesVal,
         SaveCheckPoint,
         ImageSize,
         NumTrainSamples,
+        NumValSamples,
         TrainLabels,
+        ValLabels,
         NumClasses
     )
 
@@ -90,7 +100,7 @@ def SetupDirNames(BasePath):
     Outputs:
     Writes a file ./TxtFiles/DirNames.txt with full path to all image files without extension
     """
-    DirNamesTrain = ReadDirNames("./TxtFiles/DirNamesTrain.txt")
+    DirNamesTrain = ReadDirNames(os.path.join(BasePath))
 
     return DirNamesTrain
 

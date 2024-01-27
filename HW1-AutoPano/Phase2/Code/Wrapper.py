@@ -55,7 +55,7 @@ def generate_data(image, image_name, patch_size=128, num_patches=10, perturbatio
     
     # warp image using inverse homography
     warped_image = cv2.warpPerspective(image, np.linalg.inv(homography_ab), (h, w), flags=cv2.INTER_LINEAR)
-    print(f'Warped Image shape: {warped_image.shape}')
+    # print(f'Warped Image shape: {warped_image.shape}')
     
     # cv2.imshow('frame', image) # Initial Capture
     # cv2.imshow('frame1', warped_image) # Transformed Capture
@@ -65,7 +65,7 @@ def generate_data(image, image_name, patch_size=128, num_patches=10, perturbatio
     
     # Get the original patch, warped patch, and homography and save them to the output directory
     warped_patch = get_patch(warped_image, x, y, patch_size)
-    print(f'Warped patch shape: {warped_patch.shape}')
+    # print(f'Warped patch shape: {warped_patch.shape}')
     
     
     # cv2.imshow('frame', original_patch) # Initial Capture
@@ -101,12 +101,16 @@ def main():
 	Image Warping + Blending
 	Save Panorama output as mypano.png
 	"""
-    traindir = 'Phase2/Data/Train/'
-    valdir = 'Phase2/Data/Val/'
+    # imgdir = 'Phase2/Data/Train/'
+    imgdir = 'Phase2/Data/Val/'
     
-    OrigOutputDir = 'Phase2/Data/GeneratedDataset/Train/Original/'
-    WarpOutputDir = 'Phase2/Data/GeneratedDataset/Train/Warped/'
-    LabelsOutputDir = 'Phase2/Data/GeneratedDataset/Train/'
+    # OrigOutputDir = 'Phase2/Data/GeneratedDataset/Train/Original/'
+    # WarpOutputDir = 'Phase2/Data/GeneratedDataset/Train/Warped/'
+    # LabelsOutputDir = 'Phase2/Data/GeneratedDataset/Train/'
+    
+    OrigOutputDir = 'Phase2/Data/GeneratedDataset/Val/Original/'
+    WarpOutputDir = 'Phase2/Data/GeneratedDataset/Val/Warped/'
+    LabelsOutputDir = 'Phase2/Data/GeneratedDataset/Val/'
     
     if not os.path.exists(OrigOutputDir):    
         os.makedirs(OrigOutputDir)
@@ -115,32 +119,41 @@ def main():
     
     perturbation_list = []
     homography_list = []
-    train_samples = 5000
+    train_samples = 1000
     num_patches = 10
-    count = 0
+    count = 1
     
-    for i in range(train_samples):
-        image_path = f'{traindir}{i+1}.jpg'
-        print(f'Processing image: {image_path}')
+    
+    # with open('Phase2/Data/GeneratedDataset/Train/train_names.txt', 'w') as train_file:
+    with open('Phase2/Data/GeneratedDataset/Val/val_names.txt', 'w') as train_file:
+    
         
-        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        h, w = img.shape[0], img.shape[1]
-        image = cv2.resize(img, (480, 480))
-        
-        for j in range(num_patches):
+        for i in range(train_samples):
+            image_path = f'{imgdir}{i+1}.jpg'
+            
+            print(f'Processing image: {image_path}')
+            
+            img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            h, w = img.shape[0], img.shape[1]
+            image = cv2.resize(img, (480, 480))
+            
+            for j in range(num_patches):
 
-            # Generate 10 patches from each image
-            original_patch, warped_patch, perturbation, homography_ab = generate_data(image, i+1)
-            
-            cv2.imwrite(f'{OrigOutputDir}{count}_{i}.jpg', original_patch)
-            cv2.imwrite(f'{WarpOutputDir}{count}_{i}.jpg', warped_patch)
-            perturbation_list.append(perturbation)
-            homography_list.append(homography_ab)
-            
-            count += 1
+                # Generate 5 patches from each image
+                original_patch, warped_patch, perturbation, homography_ab = generate_data(image, i+1)
+                
+                cv2.imwrite(f'{OrigOutputDir}{count}_{i}.jpg', original_patch)
+                cv2.imwrite(f'{WarpOutputDir}{count}_{i}.jpg', warped_patch)
+                perturbation_list.append(perturbation)
+                homography_list.append(homography_ab)
+                train_file.write(f'Val/{count}_{i}\n')
+                
+                count += 1
     
     np.save(f'{LabelsOutputDir}Labels.npy', perturbation_list)
     np.save(f'{LabelsOutputDir}Homography.npy', homography_list)
+
+    #Add saving a text file with the image names
     
     
 

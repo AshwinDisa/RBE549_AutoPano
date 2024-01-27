@@ -200,7 +200,7 @@ def get_best_corners(image_anms, corners, corner_coords, best):
 
     return n_best
 
-def get_corners(gray, threshold=0.01):
+def get_corners(gray, stitched_panorama, threshold=0.01):
     
     # Apply cornerHarris algorithm
         
@@ -220,11 +220,11 @@ def get_corners(gray, threshold=0.01):
         x, y = corner[0], corner[1]
         x, y = np.intp(x), np.intp(y)
         corner_coords.append([x, y])
-        cv2.circle(gray, (x, y), 3, 255, -1)
+        # cv2.circle(stitched_panorama, (x, y), 3, [0, 255, 0], -1)
 
 
-    # cv2.imshow('Image with Borders', gray)
-    # save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/HW1-AutoPano/Phase1/Code/corners/corner' + str(iter) + '.jpg', image_corner)        
+    # cv2.imshow('Image with Borders', stitched_panorama)
+    # # save_image('/home/ashd/WPI Spring 2024/Computer Vision/HW1/YourDirectoryID_p1/HW1-AutoPano/Phase1/Code/corners/corner' + str(iter) + '.jpg', image_corner)        
     
     # if cv2.waitKey(0) & 0xff == 27: 
     #     cv2.destroyAllWindows() 
@@ -300,15 +300,15 @@ def main():
         gray_pano = cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2GRAY)
         gray = cv2.cvtColor(images[i+1], cv2.COLOR_BGR2GRAY)
     
-        # corners = cv2.goodFeaturesToTrack(gray, 500, 0.001, 10, useHarrisDetector=False)
-        # corners_pano = cv2.goodFeaturesToTrack(gray_pano, 500, 0.001, 10, useHarrisDetector=False)
+        # corners = cv2.goodFeaturesToTrack(gray, 300, 0.001, 10, useHarrisDetector=False)
+        # corners_pano = cv2.goodFeaturesToTrack(gray_pano, 300, 0.001, 10, useHarrisDetector=False)
 
-        corner_coords, dst = get_corners(gray)
-        corner_coords_pano, dst_pano = get_corners(gray_pano)
+        corner_coords, dst = get_corners(gray, images[i+1])
+        corner_coords_pano, dst_pano = get_corners(gray_pano, stitched_panorama)
 
-        corners = get_best_corners(images[i+1], dst, corner_coords, best=300)
-        corners_pano = get_best_corners(stitched_panorama, dst_pano, corner_coords_pano, best=300)
-        
+        corners = get_best_corners(images[i+1], dst, corner_coords, best=500)
+        corners_pano = get_best_corners(stitched_panorama, dst_pano, corner_coords_pano, best=500)
+
         corners = np.array(corners).reshape(-1, 2)
         corners_pano = np.array(corners_pano).reshape(-1, 2)
         best_corners.append(corners_pano)
@@ -353,7 +353,7 @@ def main():
 
             dmatches = convert_to_dmatches(matches)
 
-            plotter(stitched_panorama, keypoints1, images[i+1], keypoints2, dmatches)
+            # plotter(stitched_panorama, keypoints1, images[i+1], keypoints2, dmatches)
 
             """
             Image Warping + Blending
@@ -362,7 +362,6 @@ def main():
 
             stitched_panorama = get_warped_image(stitched_panorama, images[i+1], h_final_matrix)
 
-            # stitched_panorama = blend_images(stitched_panorama, warped_image)
             stitched_panorama = crop_panorama(stitched_panorama)
             
             plt.imshow(cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2RGB))
