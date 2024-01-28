@@ -75,73 +75,82 @@ class HomographyModel(pl.LightningModule):
         # return {"avg_val_loss": avg_loss, "log": logs}
         return {"avg_val_loss": avg_loss.item()}    
     
+    
 
+    
 
-# class Net(nn.Module):
-#     def __init__(self, InputSize, OutputSize):
-#         """
-#         Inputs:
-#         InputSize - Size of the Input
-#         OutputSize - Size of the Output
-#         """
-#         super().__init__()
-#         #############################
-#         # Fill your network initialization of choice here!
-#         #############################
-#         ...
-#         #############################
-#         # You will need to change the input size and output
-#         # size for your Spatial transformer network layer!
-#         #############################
-#         # Spatial transformer localization-network
-#         self.localization = nn.Sequential(
-#             nn.Conv2d(1, 8, kernel_size=7),
-#             nn.MaxPool2d(2, stride=2),
-#             nn.ReLU(True),
-#             nn.Conv2d(8, 10, kernel_size=5),
-#             nn.MaxPool2d(2, stride=2),
-#             nn.ReLU(True),
-#         )
+class UnSupModel(HomographyModel):
+    def __init__(self, InputSize, OutputSize):
+        """
+        Inputs:
+        InputSize - Size of the Input
+        OutputSize - Size of the Output
+        """
+        super(HomographyModel).__init__()
+        #############################
+        # Fill your network initialization of choice here!
+        #############################
+        self.tensorDLT = kornia.geometry.transform.dlt()
+        #############################
+        # You will need to change the input size and output
+        # size for your Spatial transformer network layer!
+        #############################
+        # Spatial transformer localization-network
+        self.localization = nn.Sequential(
+            nn.Conv2d(1, 8, kernel_size=7),
+            nn.MaxPool2d(2, stride=2),
+            nn.ReLU(True),
+            nn.Conv2d(8, 10, kernel_size=5),
+            nn.MaxPool2d(2, stride=2),
+            nn.ReLU(True),
+        )
+        
 
-#         # Regressor for the 3 * 2 affine matrix
-#         self.fc_loc = nn.Sequential(
-#             nn.Linear(10 * 3 * 3, 32), nn.ReLU(True), nn.Linear(32, 3 * 2)
-#         )
+        # Regressor for the 3 * 2 affine matrix
+        self.fc_loc = nn.Sequential(
+            nn.Linear(10 * 3 * 3, 32), nn.ReLU(True), nn.Linear(32, 3 * 2)
+        )
 
-#         # Initialize the weights/bias with identity transformation
-#         self.fc_loc[2].weight.data.zero_()
-#         self.fc_loc[2].bias.data.copy_(
-#             torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float)
-#         )
+        # Initialize the weights/bias with identity transformation
+        self.fc_loc[2].weight.data.zero_()
+        self.fc_loc[2].bias.data.copy_(
+            torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float)
+        )
 
-#     #############################
-#     # You will need to change the input size and output
-#     # size for your Spatial transformer network layer!
-#     #############################
-#     def stn(self, x):
-#         "Spatial transformer network forward function"
-#         xs = self.localization(x)
-#         xs = xs.view(-1, 10 * 3 * 3)
-#         theta = self.fc_loc(xs)
-#         theta = theta.view(-1, 2, 3)
+    #############################
+    # You will need to change the input size and output
+    # size for your Spatial transformer network layer!
+    #############################
+    def stn(self, x):
+        "Spatial transformer network forward function"
+        xs = self.localization(x)
+        xs = xs.view(-1, 10 * 3 * 3)
+        theta = self.fc_loc(xs)
+        theta = theta.view(-1, 2, 3)
 
-#         grid = F.affine_grid(theta, x.size())
-#         x = F.grid_sample(x, grid)
+        grid = F.affine_grid(theta, x.size())
+        x = F.grid_sample(x, grid)
 
-#         return x
+        return x
 
-#     def forward(self, xa, xb):
-#         """
-#         Input:
-#         xa is a MiniBatch of the image a
-#         xb is a MiniBatch of the image b
-#         Outputs:
-#         out - output of the network
-#         """
-#         #############################
-#         # Fill your network structure of choice here!
-#         #############################
-#         return out
+    def forward(self, xa, xb):
+        """
+        Input:
+        xa is a MiniBatch of the image a
+        xb is a MiniBatch of the image b
+        Outputs:
+        out - output of the network
+        """
+        #############################
+        # Fill your network structure of choice here!
+        #############################
+        
+        
+        patchB = kornia.geometry.transform.warp_perspective(patch_a, delta, dsize=(128, 128))
+        
+        
+        return out
+    
 
 
 
@@ -219,3 +228,7 @@ class SupModel(nn.Module):
         out = self.fc2(x)
         
         return out
+    
+    
+
+
