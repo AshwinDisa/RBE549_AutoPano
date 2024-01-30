@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import kornia
+import numpy as np
 
 class TensorDLT(nn.Module):
     def __init__(self):
@@ -9,26 +10,35 @@ class TensorDLT(nn.Module):
         
     def tensorDLT(self, corners_a, preds):
         H = torch.tensor([], device=preds.device)
-        for pred in preds:
-            corners_b = corners_a + pred
-            A, b = [], []
-            for i in range(0, 8, 2):
-                Ai = [
-                    [0, 0, 0, -corners_a[i], -corners_a[i + 1], -1, corners_b[i + 1] * corners_a[i], corners_b[i + 1] * corners_a[i + 1]],
-                    [corners_a[i], corners_a[i + 1], 1, 0, 0, 0, -corners_b[i] * corners_a[i], -corners_b[i] * corners_a[i + 1]]
-                ]
-                A.extend(Ai)
+        batch_size = corners_a.shape[0]
 
-                bi = [-corners_b[i + 1], -corners_b[i]]
-                b.extend(bi)
-            A = torch.tensor(A, device=pred.device)
-            b = torch.tensor(b, device=pred.device)
-            
-            h = torch.linalg.pinv(A)@ b
-            
-            print(h)
-            H = torch.cat(H,h.reshape(1,-1), axis=0)
+        A = torch.zeros(size=(batch_size,8,8),dtype=torch.float64)
+        b = torch.zeros(size=(batch_size,8),dtype=torch.float64)
+
+        idx_x = torch.tensor([0,2,4,6])
+        idx_y = torch.tensor([1,3,5,7])
+        zeros = torch.zeros(size=(batch_size,4))
+        ones = torch.ones(size=(batch_size,4))
+
         
+        u_i,v_i = corners_a.reshape(shape=(-1,4,2)).transpose(1,2).swapaxes(0,1)
+        u_i_p,v_i_p = preds.reshape(shape=(-1,4,2)).transpose(1,2).swapaxes(0,1)
+     
+        A[:,idx_x] = torch.stack([zeros,zeros,zeros,-u_i,-v_i,-ones,v_i_p*u_i,v_i_p*v_i],dim=2)
+        A[:,idx_y] = torch.stack([u_i,v_i,ones,zeros,zeros,zeros,-u_i_p*u_i,-u_i_p*v_i],dim=2)
+        b[:,idx_x] = -v_i_p
+        b[:,idx_y] = u_i_p
+        
+        # print(A)
+        # print(b)
+
+        b = b.reshape(batch_size,8,1)
+        ret = torch.linalg.pinv(A) @ b
+        ones_2 = torch.ones(size=(batch_size,1,1))
+        ret = torch.cat([ret,ones_2],dim=1)
+        ret = ret.reshape(shape=(-1,3,3))
+        return ret
+    
     def forward(self, corners_a, preds):
         return self.tensorDLT(corners_a, preds)
 
@@ -73,6 +83,11 @@ def test_tensorDLT():
     H4pt_torch = torch.tensor(actual_H4pt_list,dtype=torch.float64)
 
     # test_img = torch.zeros(size=(2,128,128))
+    tensorDLT = TensorDLT()
+    
     H_torch = tensorDLT(H4pt_torch[0],H4pt_torch[1])
     print(H_cv2)
     print(H_torch[0])
+    
+
+test_tensorDLT()

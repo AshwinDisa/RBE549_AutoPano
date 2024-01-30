@@ -17,6 +17,7 @@ import numpy as np
 import torch.nn.functional as F
 import lightning as pl
 import kornia  # You can use this to get the transform and warp in this project
+# from tensorDLT import TensorDLT
 
 # Don't generate pyc codes
 sys.dont_write_bytecode = True
@@ -90,50 +91,9 @@ class UnSupModel(HomographyModel):
         #############################
         # Fill your network initialization of choice here!
         #############################
-        self.tensorDLT = kornia.geometry.transform.dlt()
-        #############################
-        # You will need to change the input size and output
-        # size for your Spatial transformer network layer!
-        #############################
-        # Spatial transformer localization-network
-        self.localization = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=7),
-            nn.MaxPool2d(2, stride=2),
-            nn.ReLU(True),
-            nn.Conv2d(8, 10, kernel_size=5),
-            nn.MaxPool2d(2, stride=2),
-            nn.ReLU(True),
-        )
-        
+        self.tensorDLT = TensorDLT()
 
-        # Regressor for the 3 * 2 affine matrix
-        self.fc_loc = nn.Sequential(
-            nn.Linear(10 * 3 * 3, 32), nn.ReLU(True), nn.Linear(32, 3 * 2)
-        )
-
-        # Initialize the weights/bias with identity transformation
-        self.fc_loc[2].weight.data.zero_()
-        self.fc_loc[2].bias.data.copy_(
-            torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float)
-        )
-
-    #############################
-    # You will need to change the input size and output
-    # size for your Spatial transformer network layer!
-    #############################
-    def stn(self, x):
-        "Spatial transformer network forward function"
-        xs = self.localization(x)
-        xs = xs.view(-1, 10 * 3 * 3)
-        theta = self.fc_loc(xs)
-        theta = theta.view(-1, 2, 3)
-
-        grid = F.affine_grid(theta, x.size())
-        x = F.grid_sample(x, grid)
-
-        return x
-
-    def forward(self, xa, xb):
+    def forward(self, corners_a, preds, img_a_batch):
         """
         Input:
         xa is a MiniBatch of the image a
@@ -144,10 +104,9 @@ class UnSupModel(HomographyModel):
         #############################
         # Fill your network structure of choice here!
         #############################
-        
-        
-        patchB = kornia.geometry.transform.warp_perspective(patch_a, delta, dsize=(128, 128))
-        
+        H = self.tensorDLT(corners_a, preds)
+        H_inv = torch.inverse(H)
+        out = kornia.geometry.transform.warp_perspective(img_a_batch, H_inv, dsize=(128, 128))
         
         return out
     

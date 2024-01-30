@@ -376,6 +376,8 @@ def main():
         TrainCoordinates,
         ValCoordinates,
         NumClasses,
+        TrainCorners,
+        ValCorners,
     ) = SetupAll(BasePath, CheckPointPath)
 
     # Find Latest Checkpoint File

@@ -45,9 +45,15 @@ def SetupAll(BasePath, CheckPointPath):
     LabelsPathTrain = './Phase2/Data/GeneratedDataset/Train/'
     TrainLabels = np.load(os.path.join(LabelsPathTrain, 'Labels.npy'), allow_pickle=True)
     
+    LabelsPathTrain = './Phase2/Data/GeneratedDataset/Train/'
+    TrainCorners = np.load(os.path.join(LabelsPathTrain, 'Corners.npy'), allow_pickle=True)
+    
     # Read and Setup Labels
     LabelsPathVal = './Phase2/Data/GeneratedDataset/Val/'
     ValLabels = np.load(os.path.join(LabelsPathVal, 'Labels.npy'), allow_pickle=True)
+    
+    LabelsPathVal = './Phase2/Data/GeneratedDataset/Val/'
+    ValCorners = np.load(os.path.join(LabelsPathVal, 'Corners.npy'), allow_pickle=True)
     
     # TrainLabels = ReadLabels(LabelsPathTrain)
 
@@ -77,7 +83,9 @@ def SetupAll(BasePath, CheckPointPath):
         NumValSamples,
         TrainLabels,
         ValLabels,
-        NumClasses
+        NumClasses,
+        TrainCorners,
+        ValCorners
     )
 
 

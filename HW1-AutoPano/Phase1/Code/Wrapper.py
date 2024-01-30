@@ -32,14 +32,6 @@ def crop_panorama(panorama):
     cropped_panorama = panorama[y:y+h, x:x+w]
     return cropped_panorama
 
-def blend_images(image1, image2):
-
-    if image1.shape != image2.shape:
-        image2 = cv2.resize(image2, (image1.shape[1], image1.shape[0]))
-
-    blended_image = cv2.addWeighted(image1, 0.2, image2, 0.2, 0)
-    return blended_image
-
 def get_warped_image(image1, image2, h_mat):
     
     h1, w1 = image1.shape[:2]
@@ -66,6 +58,7 @@ def get_warped_image(image1, image2, h_mat):
     print("result shape: ", result.shape)
 
     return result
+
 
 def plotter(image1, keypoints1, image2, keypoints2, dmatches):
 
@@ -138,6 +131,9 @@ def get_feature_vector(image, best_corners):
    
     for x, y in best_corners:
 
+        if (x == np.inf or y == np.inf):
+            continue
+
         x_padded = int(x + half_patch_size)
         y_padded = int(y + half_patch_size)
 
@@ -182,8 +178,6 @@ def get_best_corners(image_anms, corners, corner_coords, best):
                 r[i, 1] = y
                 r[i, 2] = x
 
-        # print(x, y)
-            
     r = r[r[:, 0].argsort()]
     r = np.flip(r)
     n_best = r[:best]
@@ -276,7 +270,8 @@ def main():
     Read a set of images for Panorama stitching
     """
     
-    imagepath = "Phase1/Data/Train/Set1"
+    # imagepath = "Phase1/Data/Train/Set1"
+    imagepath = "P1TestSet/Phase1/TestSet3"
     images = []
     
     # for filename in os.listdir(imagepath):
@@ -300,14 +295,14 @@ def main():
         gray_pano = cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2GRAY)
         gray = cv2.cvtColor(images[i+1], cv2.COLOR_BGR2GRAY)
     
-        # corners = cv2.goodFeaturesToTrack(gray, 300, 0.001, 10, useHarrisDetector=False)
-        # corners_pano = cv2.goodFeaturesToTrack(gray_pano, 300, 0.001, 10, useHarrisDetector=False)
+        corners = cv2.goodFeaturesToTrack(gray, 300, 0.001, 10, useHarrisDetector=False)
+        corners_pano = cv2.goodFeaturesToTrack(gray_pano, 300, 0.001, 10, useHarrisDetector=False)
 
-        corner_coords, dst = get_corners(gray, images[i+1])
-        corner_coords_pano, dst_pano = get_corners(gray_pano, stitched_panorama)
+        # corner_coords, dst = get_corners(gray, images[i+1])
+        # corner_coords_pano, dst_pano = get_corners(gray_pano, stitched_panorama)
 
-        corners = get_best_corners(images[i+1], dst, corner_coords, best=500)
-        corners_pano = get_best_corners(stitched_panorama, dst_pano, corner_coords_pano, best=500)
+        # corners = get_best_corners(images[i+1], dst, corner_coords, best=500)
+        # corners_pano = get_best_corners(stitched_panorama, dst_pano, corner_coords_pano, best=500)
 
         corners = np.array(corners).reshape(-1, 2)
         corners_pano = np.array(corners_pano).reshape(-1, 2)
@@ -362,7 +357,7 @@ def main():
 
             stitched_panorama = get_warped_image(stitched_panorama, images[i+1], h_final_matrix)
 
-            stitched_panorama = crop_panorama(stitched_panorama)
+            # stitched_panorama = crop_panorama(stitched_panorama)
             
             plt.imshow(cv2.cvtColor(stitched_panorama, cv2.COLOR_BGR2RGB))
             plt.show()
