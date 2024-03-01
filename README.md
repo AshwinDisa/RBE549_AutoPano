@@ -67,4 +67,4 @@ The purpose of this project is to stitch two or more images in order to create o
     <img src="https://github.com/AshwinDisa/RBE549_AutoPano/blob/master/HW1-AutoPano/Phase1/Code/matching/unsup_result2.png?raw=true" width="450" height="250">
 </p>
 
-
+### Detailed explanations can be found in the project report. 
