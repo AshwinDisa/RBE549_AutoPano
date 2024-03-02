@@ -1,4 +1,6 @@
 # AutoPano
+Part of coursework for Computer Vision at Worcester Polytechnic Institute (WPI) by Prof. Nitin J. Sanket. Course website: https://pear.wpi.edu/teaching/rbe549/spring2024.html
+
 The purpose of this project is to stitch two or more images in order to create one seamless panorama image. Each image have few repeated local features (∼30-50% or more).
 
 ## Phase1: Traditional Approach
