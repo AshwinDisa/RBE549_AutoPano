@@ -72,5 +72,5 @@ The purpose of this project is to stitch two or more images in order to create o
 ### Detailed explanations can be found in the project report. 
 
 ### Collaborators
-Ashwin Disa - amdisa@wpi.edu
-Mihir Deshmukh - mpdeshmukh@wpi.edu
+- Ashwin Disa - amdisa@wpi.edu
+- Mihir Deshmukh - mpdeshmukh@wpi.edu
